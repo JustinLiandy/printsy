@@ -112,11 +112,8 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link
-              href="/auth/sign-in"
-              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
-            >
-              Login
+            <Link href="/auth/sign-in" className="md:hidden rounded-lg border border-slate-200 px-3 py-1 text-sm">
+                Login
             </Link>
           )}
         </div>
