@@ -1,4 +1,11 @@
-import DesignCard from '@/components/DesignCard';
+// src/app/page.tsx
+import DesignCard from "@/components/DesignCard";
+import { createClient } from "@supabase/supabase-js";
+
+// Avoid static generation; always render on the server
+export const dynamic = "force-dynamic";
+// Belt and suspenders
+export const revalidate = 0;
 
 type Design = {
   id: string;
@@ -8,18 +15,19 @@ type Design = {
   is_published: boolean;
 };
 
-// disable caching so new rows appear immediately
-export const revalidate = 0;
-
 async function getDesigns(): Promise<Design[]> {
-  // Works locally and in prod if NEXT_PUBLIC_SITE_URL is set.
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? '';
-  const res = await fetch(`${base}/api/designs`, { cache: 'no-store' });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(url, anon);
 
-  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error ?? 'Unknown error');
-  return json.data as Design[];
+  const { data, error } = await supabase
+    .from("designs")
+    .select("id, title, base_price, preview_url, is_published")
+    .eq("is_published", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 export default async function Home() {
@@ -30,11 +38,19 @@ export default async function Home() {
       <h1 className="mb-4 text-xl font-semibold">Latest Designs</h1>
 
       {designs.length === 0 ? (
-        <p className="text-sm opacity-70">No designs yet. Add one in Supabase, set <code>is_published</code> true.</p>
+        <p className="text-sm opacity-70">
+          No designs yet. Add one in Supabase and set <code>is_published</code> to true.
+        </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {designs.map(d => (
-            <DesignCard key={d.id} id={d.id} title={d.title} base_price={d.base_price} preview_url={d.preview_url} />
+            <DesignCard
+              key={d.id}
+              id={d.id}
+              title={d.title}
+              base_price={d.base_price}
+              preview_url={d.preview_url}
+            />
           ))}
         </div>
       )}
