@@ -6,20 +6,47 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL; // public gate for UI
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 export default function Navbar() {
   const supabase = supabaseBrowser();
   const [user, setUser] = useState<User | null>(null);
+  const [isSeller, setIsSeller] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getUser().then(({ data }) => mounted && setUser(data.user ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      if (!mounted) return;
-      setUser(s?.user ?? null);
+
+    async function fetchUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (mounted) {
+        setUser(user ?? null);
+        if (user) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("is_seller")
+            .eq("id", user.id)
+            .maybeSingle();
+          setIsSeller(Boolean(data?.is_seller));
+        }
+      }
+    }
+
+    fetchUser();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        supabase
+          .from("profiles")
+          .select("is_seller")
+          .eq("id", session.user.id)
+          .maybeSingle()
+          .then(({ data }) => setIsSeller(Boolean(data?.is_seller)));
+      } else {
+        setIsSeller(false);
+      }
     });
+
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, [supabase]);
 
@@ -50,64 +77,26 @@ export default function Navbar() {
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
             <Link href="/" className="transition hover:text-brand-600">Home</Link>
-            <Link href="/seller/designs/new" className="transition hover:text-brand-600">Sell</Link>
-            {isAdmin && <Link href="/admin" className="transition hover:text-brand-600">Admin</Link>}
+            {!isSeller && user && (
+              <Link href="/seller/onboarding" className="transition hover:text-brand-600">
+                Become a Seller
+              </Link>
+            )}
+            {isSeller && (
+              <Link href="/seller" className="transition hover:text-brand-600">
+                Seller
+              </Link>
+            )}
+            {isAdmin && (
+              <Link href="/admin" className="transition hover:text-brand-600">
+                Admin
+              </Link>
+            )}
           </nav>
         </div>
-
-        <div className="hidden md:flex items-center gap-3">
-          <input
-            placeholder="Search designs..."
-            className="w-64 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-brand-300 focus:ring-2"
-          />
-          {user ? (
-            <>
-              <span className="hidden lg:inline text-sm text-slate-700">Hi, {user.email}</span>
-              <button
-                onClick={logout}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-red-400 hover:text-red-500"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={login}
-              className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-700"
-            >
-              Login
-            </button>
-          )}
-        </div>
+        {/* ... keep your search + login/logout UI the same ... */}
       </div>
-
-      {/* Mobile drawer */}
-      {open && (
-        <div className="md:hidden border-t border-slate-200 bg-white">
-          <div className="mx-auto max-w-7xl px-6 py-3">
-            <div className="mb-3">
-              <input
-                placeholder="Search designs..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-brand-300 focus:ring-2"
-              />
-            </div>
-            <div className="flex flex-col gap-2 text-sm font-medium text-slate-700">
-              <Link href="/" className="rounded-lg px-2 py-2 hover:bg-slate-50" onClick={()=>setOpen(false)}>Home</Link>
-              <Link href="/seller/designs/new" className="rounded-lg px-2 py-2 hover:bg-slate-50" onClick={()=>setOpen(false)}>Sell</Link>
-              {isAdmin && (
-                <Link href="/admin" className="rounded-lg px-2 py-2 hover:bg-slate-50" onClick={()=>setOpen(false)}>Admin</Link>
-              )}
-              <div className="mt-2">
-                {user ? (
-                  <button onClick={logout} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:border-red-400 hover:text-red-500">Logout</button>
-                ) : (
-                  <button onClick={login} className="w-full rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Login</button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ... keep your mobile drawer logic, just swap in the same conditional links ... */}
     </header>
   );
 }
