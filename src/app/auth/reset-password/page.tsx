@@ -1,4 +1,3 @@
-// src/app/auth/reset-password/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,10 +11,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const schema = z.object({
-  password: z.string().min(6, "At least 6 characters"),
-});
-
+const schema = z.object({ password: z.string().min(6, "At least 6 characters") });
 type Values = z.infer<typeof schema>;
 
 export default function ResetPasswordPage() {
@@ -23,7 +19,7 @@ export default function ResetPasswordPage() {
   const query = useSearchParams();
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [alert, setAlert] = useState<{ type: "error"|"success"; text: string } | null>(null);
+  const [alert, setAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   useEffect(() => {
     const code = query.get("code");
@@ -33,15 +29,14 @@ export default function ResetPasswordPage() {
       setReady(true);
       return;
     }
-    supabase.auth.exchangeCodeForSession(code)
-      .then(({ error }) => {
-        if (error) setAlert({ type: "error", text: error.message });
-        setReady(true);
-      });
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      if (error) setAlert({ type: "error", text: error.message });
+      setReady(true);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { password: "" } });
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { password: "" }, mode: "onTouched" });
 
   async function onSubmit(values: Values) {
     setAlert(null);
@@ -71,12 +66,14 @@ export default function ResetPasswordPage() {
                     <FormMessage />
                   </FormItem>
                 )} />
+
                 {alert && (
-                  <div className={`rounded-lg border px-3 py-2 text-sm ${
-                    alert.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"
-                  }`}>{alert.text}</div>
+                  <div className={`rounded-lg border px-3 py-2 text-sm ${alert.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"}`}>
+                    {alert.text}
+                  </div>
                 )}
-                <Button type="submit" className="bg-brand-600 text-white hover:bg-brand-700" disabled={form.formState.isSubmitting}>
+
+                <Button type="submit" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? "Saving..." : "Save password"}
                 </Button>
               </form>

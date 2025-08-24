@@ -3,6 +3,7 @@ import { z } from "zod";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabaseServer";
 import DesignCard from "@/components/DesignCard";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,20 +61,14 @@ export default async function Home({ searchParams }: { searchParams?: Record<str
               A modern marketplace for custom apparel. Create designs in the browser and publish instantly.
               We’ll handle payments and the boring parts.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/seller"
-                className="rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-card transition hover:bg-brand-700"
-              >
-                Start selling
-              </Link>
-              <a
-                href="#catalog"
-                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-300 hover:text-brand-600"
-              >
-                Explore catalog
-              </a>
-            </div>
+<div className="mt-6 flex flex-wrap gap-3">
+  <Link href="/seller">
+    <Button>Start selling</Button>
+  </Link>
+  <a href="#catalog">
+    <Button variant="outline">Explore catalog</Button>
+  </a>
+</div>
           </div>
         </div>
       </section>

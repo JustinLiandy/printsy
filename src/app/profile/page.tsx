@@ -1,10 +1,10 @@
-// src/app/profile/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import type { User } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
   const supabase = supabaseBrowser();
@@ -46,17 +46,11 @@ export default function ProfilePage() {
 
       <div className="mt-6 flex flex-wrap gap-3">
         {!isSeller ? (
-          <Link href="/seller/onboarding" className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-            Become a Seller
-          </Link>
+          <Link href="/seller/onboarding"><Button>Become a Seller</Button></Link>
         ) : (
-          <Link href="/seller" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400">
-            Go to Seller dashboard
-          </Link>
+          <Link href="/seller"><Button variant="outline">Go to Seller dashboard</Button></Link>
         )}
-        <button onClick={logout} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-red-400 hover:text-red-500">
-          Logout
-        </button>
+        <Button variant="outline" onClick={logout}>Logout</Button>
       </div>
     </div>
   );

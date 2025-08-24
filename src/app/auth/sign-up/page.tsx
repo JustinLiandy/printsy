@@ -82,9 +82,10 @@ export default function SignUpPage() {
                   alert.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"
                 }`}>{alert.text}</div>
               )}
-              <Button type="submit" className="bg-brand-600 text-white hover:bg-brand-700" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Creating..." : "Create account"}
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? "Creating..." : "Create account"}
               </Button>
+
             </form>
           </Form>
           <p className="mt-4 text-xs text-slate-600">
