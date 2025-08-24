@@ -1,26 +1,65 @@
+/* Tailwind v4 import */
 @import "tailwindcss";
 
+/* ─── Global theme (Printsy light-blue) ───────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-jakarta: "Plus Jakarta Sans";
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  height: 100%;
+  background: #f7f9fc;         /* subtle off-white */
+  color: #0f172a;              /* slate-900 */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jakarta), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Better text selection */
+::selection {
+  background: #b3deff;         /* brand-200 */
+  color: #0f172a;
+}
+
+/* Focus ring for non-TW elements */
+:where(button, [role="button"], a, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(43,152,255,0.35); /* brand-500 */
+  border-radius: 12px;
+}
+
+/* Glassy header support */
+.header-glass {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.75);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+/* Scrollbar: minimal and on-brand */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #b3deff transparent;
+}
+*::-webkit-scrollbar        { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb  { background: #b3deff; border-radius: 999px; }
+*::-webkit-scrollbar-track  { background: transparent; }
+
+/* Media */
+img, video, canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Reduced motion mercy */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
