@@ -1,124 +1,122 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import  AuthFrame from "@/components/AuthFrame";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 const schema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email(),
+  password: z.string().min(6),
 });
-type Values = z.infer<typeof schema>;
 
 export default function SignInPage() {
-  const supabase = supabaseBrowser();
   const router = useRouter();
-  const [mode, setMode] = useState<"password" | "magic">("password");
+  const supabase = supabaseBrowser();
+
+  const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  const form = useForm<Values>({
-    resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
-    mode: "onTouched",
-  });
-
-  async function onSubmit(values: Values) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setAlert(null);
-    if (mode === "password") {
-      const { error } = await supabase.auth.signInWithPassword(values);
-      if (error) return setAlert({ type: "error", text: error.message });
-      router.replace("/");
+
+    const form = new FormData(e.currentTarget);
+    const values = {
+      email: String(form.get("email") || ""),
+      password: String(form.get("password") || ""),
+    };
+
+    const parsed = schema.safeParse(values);
+    if (!parsed.success) {
+      setAlert({ type: "error", text: "Please enter a valid email and password." });
       return;
     }
-    // magic link
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    setLoading(false);
+
+    if (error) {
+      setAlert({ type: "error", text: error.message });
+      return;
+    }
+    router.replace("/seller");
+  }
+
+  async function signInWithMagic(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    setAlert(null);
+
+    const emailInput = document.getElementById("email") as HTMLInputElement | null;
+    if (!emailInput?.value) {
+      setAlert({ type: "error", text: "Enter your email first, then use magic link." });
+      return;
+    }
     const { error } = await supabase.auth.signInWithOtp({
-      email: values.email,
-      options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+      email: emailInput.value,
+      options: { emailRedirectTo: `${location.origin}/auth/callback` },
     });
     if (error) setAlert({ type: "error", text: error.message });
     else setAlert({ type: "success", text: "Magic link sent. Check your email." });
   }
 
   return (
-    <div className="mx-auto max-w-md p-6">
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign in</CardTitle>
-          <CardDescription>Use password or magic link. We’re flexible, like your schedule.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex gap-2 text-xs">
-            <button
-              type="button"
-              className={`rounded-full border px-3 py-1 ${mode === "password" ? "border-brand-300 text-brand-700" : "border-slate-300 text-slate-600"}`}
-              onClick={() => setMode("password")}
-            >
-              Password
-            </button>
-            <button
-              type="button"
-              className={`rounded-full border px-3 py-1 ${mode === "magic" ? "border-brand-300 text-brand-700" : "border-slate-300 text-slate-600"}`}
-              onClick={() => setMode("magic")}
-            >
-              Magic link
-            </button>
+    <AuthFrame
+      title="Welcome back"
+      description="Sign in to manage your designs and orders."
+      footer={
+        <>
+          <span className="text-sm text-slate-600">
+            No account?{" "}
+            <Link className="text-brand-600 hover:underline" href="/auth/sign-up">
+              Sign up
+            </Link>
+          </span>
+          <Link className="text-sm text-slate-600 hover:underline" href="/auth/forgot-password">
+            Forgot password?
+          </Link>
+        </>
+      }
+    >
+      <form className="space-y-4" onSubmit={onSubmit}>
+        {alert && (
+          <div
+            role="alert"
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              alert.type === "error"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {alert.text}
           </div>
+        )}
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {mode === "password" && (
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                      <div className="mt-1 text-xs">
-                        <Link href="/auth/forgot-password" className="text-brand-600 underline">Forgot password?</Link>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
+        </div>
 
-              {alert && (
-                <div className={`rounded-lg border px-3 py-2 text-sm ${alert.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"}`}>
-                  {alert.text}
-                </div>
-              )}
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" placeholder="••••••••" required />
+        </div>
 
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Signing in..." : mode === "password" ? "Sign in" : "Send magic link"}
-              </Button>
-            </form>
-          </Form>
-
-          <p className="mt-4 text-xs text-slate-600">
-            Don’t have an account? <Link className="text-brand-600 underline" href="/auth/sign-up">Sign up</Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        <div className="flex flex-col gap-3 pt-2">
+          <Button type="submit" disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
+          <Button type="button" variant="outline" onClick={signInWithMagic}>
+            Send magic link
+          </Button>
+        </div>
+      </form>
+    </AuthFrame>
   );
 }

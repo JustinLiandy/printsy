@@ -1,86 +1,115 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import AuthFrame from "@/components/AuthFrame";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-const schema = z.object({ password: z.string().min(6, "At least 6 characters") });
-type Values = z.infer<typeof schema>;
+const schema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 export default function ResetPasswordPage() {
-  const supabase = supabaseBrowser();
-  const query = useSearchParams();
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const supabase = supabaseBrowser();
+
+  const [canReset, setCanReset] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
+  // When arriving from the email link, Supabase fires a PASSWORD_RECOVERY event
   useEffect(() => {
-    const code = query.get("code");
-    const type = query.get("type");
-    if (!code || type !== "recovery") {
-      setAlert({ type: "error", text: "Invalid or expired reset link." });
-      setReady(true);
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setCanReset(true);
+    });
+    // If the session already exists (sometimes Supabase sets it immediately)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setCanReset(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [supabase]);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAlert(null);
+
+    if (!canReset) {
+      setAlert({
+        type: "error",
+        text: "Recovery session not found. Click the link from your email again.",
+      });
       return;
     }
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) setAlert({ type: "error", text: error.message });
-      setReady(true);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { password: "" }, mode: "onTouched" });
+    const form = new FormData(e.currentTarget);
+    const password = String(form.get("password") || "");
+    const parsed = schema.safeParse({ password });
+    if (!parsed.success) {
+      setAlert({ type: "error", text: parsed.error.issues[0]?.message || "Invalid password." });
+      return;
+    }
 
-  async function onSubmit(values: Values) {
-    setAlert(null);
-    const { error } = await supabase.auth.updateUser({ password: values.password });
-    if (error) return setAlert({ type: "error", text: error.message });
-    setAlert({ type: "success", text: "Password updated. Redirecting..." });
-    setTimeout(() => router.replace("/auth/sign-in"), 800);
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+    setLoading(false);
+
+    if (error) setAlert({ type: "error", text: error.message });
+    else {
+      setAlert({ type: "success", text: "Password updated. Redirecting to sign in..." });
+      setTimeout(() => router.replace("/auth/sign-in"), 1200);
+    }
   }
 
   return (
-    <div className="mx-auto max-w-md p-6">
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-2xl">Set a new password</CardTitle>
-          <CardDescription>Give your account a fresh lock. Preferably one you’ll remember.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!ready ? (
-            <p className="text-sm text-slate-600">Validating your link...</p>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-                <FormField name="password" control={form.control} render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New password</FormLabel>
-                    <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+    <AuthFrame
+      title="Reset password"
+      description="Enter your new password."
+      footer={
+        <span className="text-sm text-slate-600">
+          Done already?{" "}
+          <Link href="/auth/sign-in" className="text-brand-600 hover:underline">
+            Back to sign in
+          </Link>
+        </span>
+      }
+    >
+      <form className="space-y-4" onSubmit={onSubmit}>
+        {alert && (
+          <div
+            role="alert"
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              alert.type === "error"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {alert.text}
+          </div>
+        )}
 
-                {alert && (
-                  <div className={`rounded-lg border px-3 py-2 text-sm ${alert.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-green-200 bg-green-50 text-green-700"}`}>
-                    {alert.text}
-                  </div>
-                )}
+        {!canReset ? (
+          <p className="text-sm text-slate-600">
+            Waiting for a valid recovery session… open the link from your email again if this
+            doesn’t switch within a few seconds.
+          </p>
+        ) : null}
 
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? "Saving..." : "Save password"}
-                </Button>
-              </form>
-            </Form>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">New password</Label>
+          <Input id="password" name="password" type="password" placeholder="••••••••" required />
+        </div>
+
+        <div className="pt-2">
+          <Button type="submit" disabled={loading || !canReset} className="w-full">
+            {loading ? "Updating…" : "Update password"}
+          </Button>
+        </div>
+      </form>
+    </AuthFrame>
   );
 }

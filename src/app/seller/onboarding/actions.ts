@@ -1,3 +1,4 @@
+// src/app/seller/onboarding/actions.ts
 "use server";
 
 import { redirect } from "next/navigation";
@@ -13,10 +14,7 @@ const schema = z.object({
 });
 
 export async function completeOnboarding(values: unknown) {
-  const parsed = schema.safeParse(values);
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues.map(i => i.message).join(", "));
-  }
+  const parsed = schema.parse(values);
 
   const supabase = await supabaseServerRSC();
   const { data: { user }, error: userErr } = await supabase.auth.getUser();
@@ -30,17 +28,15 @@ export async function completeOnboarding(values: unknown) {
         id: user.id,
         email: user.email ?? null,
         is_seller: true,
-        shop_name: parsed.data.shop_name,
-        payout_type: parsed.data.payout_type,
-        payout_name: parsed.data.payout_name,
-        payout_account: parsed.data.payout_account,
-        tax_id: parsed.data.tax_id ?? null,
+        shop_name: parsed.shop_name,
+        payout_type: parsed.payout_type,
+        payout_name: parsed.payout_name,
+        payout_account: parsed.payout_account,
+        tax_id: parsed.tax_id ?? null,
       },
       { onConflict: "id" }
     );
 
   if (error) throw new Error(error.message);
-
-  // Guaranteed navigation on success
   redirect("/seller");
 }

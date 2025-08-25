@@ -1,14 +1,14 @@
 // src/app/page.tsx
 import Link from "next/link";
 import { z } from "zod";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseServerRSC } from "@/lib/supabaseServerRSC";
 import DesignCard from "@/components/DesignCard";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Validate incoming rows so a bad value doesn’t nuke the page
+// Row validation
 const DesignSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -19,7 +19,7 @@ const DesignSchema = z.object({
 type Design = z.infer<typeof DesignSchema>;
 
 async function fetchDesigns(page = 1, pageSize = 12) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServerRSC();
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
@@ -37,9 +37,17 @@ async function fetchDesigns(page = 1, pageSize = 12) {
   return { designs, total };
 }
 
-export default async function Home({ searchParams }: { searchParams?: Record<string, string | string[]> }) {
-  // naive GET search (we’ll wire real search later)
-  const pageParam = Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page;
+// Next 15: searchParams is async
+type SearchParams = Record<string, string | string[]>;
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+
+  const pageParam = Array.isArray(sp?.page) ? sp.page[0] : sp?.page;
   const page = Math.max(1, Number(pageParam ?? 1) || 1);
   const pageSize = 12;
 
@@ -52,10 +60,10 @@ export default async function Home({ searchParams }: { searchParams?: Record<str
       {/* Hero */}
       <section className="relative border-b border-slate-200 bg-white">
         <div
-          className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(59,130,246,0.12),transparent_60%)]"
+          className="absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(127,181,255,0.18),transparent_60%)]"
           aria-hidden
         />
-        <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="relative mx-auto max-w-7xl px-6 py-16">
           <div className="max-w-3xl">
             <p className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
               New · Live design studio for creators
@@ -64,12 +72,12 @@ export default async function Home({ searchParams }: { searchParams?: Record<str
               Design. Sell. <span className="text-brand-600">Shine.</span>
             </h1>
             <p className="mt-4 text-lg text-slate-600">
-              A modern marketplace for custom apparel. Create designs in the browser and publish instantly.
-              We handle payments and the boring parts.
+              A modern marketplace for custom apparel. Create designs in the browser and
+              publish instantly. We handle payments and the boring parts.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/seller">
-                <Button>Start selling</Button>
+                <Button className="shadow-soft">Start selling</Button>
               </Link>
               <a href="#catalog">
                 <Button variant="outline">Explore catalog</Button>
@@ -82,9 +90,12 @@ export default async function Home({ searchParams }: { searchParams?: Record<str
       {/* Catalog */}
       <main id="catalog" className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-6 flex items-end justify-between gap-3">
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900">Latest designs</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900">
+            Latest designs
+          </h2>
           <p className="text-xs text-slate-500">
-            Showing {(designs.length && (page - 1) * pageSize + 1) || 0}–{(page - 1) * pageSize + designs.length} of {total}
+            Showing {(designs.length && (page - 1) * pageSize + 1) || 0}–
+            {(page - 1) * pageSize + designs.length} of {total}
           </p>
         </div>
 
@@ -115,7 +126,9 @@ export default async function Home({ searchParams }: { searchParams?: Record<str
               <Link
                 aria-disabled={!hasPrev}
                 className={`rounded-xl border px-4 py-2 text-sm ${
-                  hasPrev ? "border-slate-300 text-slate-700 hover:border-slate-400" : "pointer-events-none opacity-40"
+                  hasPrev
+                    ? "border-slate-300 text-slate-700 hover:border-slate-400"
+                    : "pointer-events-none opacity-40"
                 }`}
                 href={hasPrev ? `/?page=${page - 1}#catalog` : "#catalog"}
               >
@@ -124,7 +137,9 @@ export default async function Home({ searchParams }: { searchParams?: Record<str
               <Link
                 aria-disabled={!hasNext}
                 className={`rounded-xl border px-4 py-2 text-sm ${
-                  hasNext ? "border-slate-300 text-slate-700 hover:border-slate-400" : "pointer-events-none opacity-40"
+                  hasNext
+                    ? "border-slate-300 text-slate-700 hover:border-slate-400"
+                    : "pointer-events-none opacity-40"
                 }`}
                 href={hasNext ? `/?page=${page + 1}#catalog` : "#catalog"}
               >
