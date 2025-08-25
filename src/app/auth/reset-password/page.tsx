@@ -1,60 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import * as React from "react";
+import { z } from "zod";
 import AuthFrame from "@/components/AuthFrame";
+import { InlineAlert } from "@/components/InlineAlert";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
+const schema = z
+  .object({
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ["confirm"],
+    message: "Passwords do not match",
+  });
+
 export default function ResetPasswordPage() {
   const supabase = supabaseBrowser();
-  const [pending, setPending] = useState(false);
-  const [alert, setAlert] = useState<{type:"error"|"success";text:string}|null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    // When opened from email, the URL contains a session; the client picks it up automatically
-    supabase.auth.getSession().then(({ data }) => {
-      setReady(!!data.session);
-      if (!data.session) {
-        setAlert({ type:"error", text:"Open this page from the email link to continue." });
-      }
-    });
-  }, []);
+  const [password, setPassword] = React.useState("");
+  const [confirm, setConfirm] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [msg, setMsg] = React.useState<{ kind: "error" | "success"; text: string }>();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setAlert(null);
-    const f = new FormData(e.currentTarget);
-    const password = String(f.get("password")||"");
+    setMsg(undefined);
 
-    try {
-      setPending(true);
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
-      setAlert({ type:"success", text:"Password updated. You can now sign in." });
-    } catch (err:any) {
-      setAlert({ type:"error", text: err.message ?? "Failed to update password" });
-    } finally {
-      setPending(false);
+    const parsed = schema.safeParse({ password, confirm });
+    if (!parsed.success) {
+      setMsg({ kind: "error", text: parsed.error.issues[0]?.message ?? "Invalid form" });
+      return;
     }
+
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+    setBusy(false);
+
+    if (error) {
+      setMsg({
+        kind: "error",
+        text:
+          error.message ||
+          "Session missing. Open the reset link from your email again.",
+      });
+      return;
+    }
+
+    setMsg({ kind: "success", text: "Password updated. You can sign in now." });
   }
 
   return (
-    <AuthFrame title="Choose a new password">
-      {alert && (
-        <div className={alert.type==="error" ? "mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" : "mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700"}>
-          {alert.text}
-        </div>
-      )}
+    <AuthFrame
+      title="Reset password"
+      subtitle="Choose a new password."
+      footer={
+        <>
+          Done already?{" "}
+          <a className="font-medium text-brand-600 hover:underline" href="/auth/sign-in">
+            Back to sign in
+          </a>
+        </>
+      }
+    >
+      {msg ? <InlineAlert kind={msg.kind}>{msg.text}</InlineAlert> : null}
+
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="password">New password</Label>
-        <Input id="password" name="password" type="password" minLength={6} required />
+        <div className="space-y-2">
+          <Label htmlFor="pw">New password</Label>
+          <Input id="pw" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
         </div>
-        <Button type="submit" disabled={pending || !ready} className="w-full">
-          {pending ? "Saving…" : "Save password"}
+        <div className="space-y-2">
+          <Label htmlFor="cpw">Confirm new password</Label>
+          <Input id="cpw" type="password" placeholder="••••••••" value={confirm} onChange={e => setConfirm(e.target.value)} />
+        </div>
+
+        <Button type="submit" disabled={busy} className="w-full text-white">
+          {busy ? "Saving…" : "Update password"}
         </Button>
       </form>
     </AuthFrame>

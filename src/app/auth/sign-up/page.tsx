@@ -1,71 +1,103 @@
 "use client";
 
-import { useState } from "react";
+import * as React from "react";
 import { z } from "zod";
-import Link from "next/link";
 import AuthFrame from "@/components/AuthFrame";
+import { InlineAlert } from "@/components/InlineAlert";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6, "Min 6 characters"),
+  full_name: z.string().min(2, "Name must be at least 2 characters").max(80).optional(),
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export default function SignUpPage() {
   const supabase = supabaseBrowser();
-  const [pending, setPending] = useState(false);
-  const [alert, setAlert] = useState<{type:"error"|"success";text:string}|null>(null);
+  const [form, setForm] = React.useState({ full_name: "", email: "", password: "" });
+  const [busy, setBusy] = React.useState(false);
+  const [msg, setMsg] = React.useState<{ kind: "error" | "success"; text: string }>();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setAlert(null);
-    const f = new FormData(e.currentTarget);
-    const values = schema.parse({
-      email: String(f.get("email")||""),
-      password: String(f.get("password")||""),
-    });
+    setMsg(undefined);
 
-    try {
-      setPending(true);
-      const { error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
-      });
-      if (error) throw error;
-      setAlert({ type:"success", text:"Check your email to verify, then sign in." });
-    } catch (err:any) {
-      setAlert({ type:"error", text: err.message ?? "Sign up failed" });
-    } finally {
-      setPending(false);
+    const parsed = schema.safeParse(form);
+    if (!parsed.success) {
+      setMsg({ kind: "error", text: parsed.error.issues[0]?.message ?? "Invalid form" });
+      return;
     }
+
+    setBusy(true);
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        emailRedirectTo: (process.env.NEXT_PUBLIC_SITE_URL ?? "") + "/auth/sign-in",
+        data: { full_name: parsed.data.full_name ?? "" },
+      },
+    });
+    setBusy(false);
+
+    if (error) {
+      setMsg({ kind: "error", text: error.message });
+      return;
+    }
+
+    // Create (or upsert) profile row for the user id if present
+    const userId = data.user?.id;
+    if (userId) {
+      await supabase
+        .from("profiles")
+        .upsert(
+          { id: userId, email: parsed.data.email, full_name: parsed.data.full_name ?? "", is_seller: false },
+          { onConflict: "id" }
+        );
+    }
+
+    setMsg({
+      kind: "success",
+      text: "Account created. Check your inbox to confirm your email, then sign in.",
+    });
   }
 
   return (
-    <AuthFrame title="Create account">
-      {alert && (
-        <div className={alert.type==="error" ? "mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" : "mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700"}>
-          {alert.text}
-        </div>
-      )}
+    <AuthFrame
+      title="Create your account"
+      subtitle="Start selling your designs in minutes."
+      footer={
+        <>
+          Already have an account?{" "}
+          <a className="font-medium text-brand-600 hover:underline" href="/auth/sign-in">
+            Sign in
+          </a>
+        </>
+      }
+    >
+      {msg ? <InlineAlert kind={msg.kind}>{msg.text}</InlineAlert> : null}
+
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
+        <div className="space-y-2">
+          <Label htmlFor="name">Full name (optional)</Label>
+          <Input id="name" value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} />
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
+          <Input id="email" type="email" placeholder="you@example.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
         </div>
-        <div>
+
+        <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" required />
+          <Input id="password" type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
         </div>
-        <Button type="submit" disabled={pending} className="w-full">
-          {pending ? "Creating…" : "Create account"}
+
+        <Button type="submit" disabled={busy} variant="outline">
+          {busy ? "Creating…" : "Create account"}
         </Button>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          Already have an account? <Link className="text-brand-600 hover:underline" href="/auth/sign-in">Sign in</Link>
-        </p>
       </form>
     </AuthFrame>
   );

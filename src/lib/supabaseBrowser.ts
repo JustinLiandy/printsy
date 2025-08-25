@@ -1,4 +1,4 @@
-// tiny, stable browser client – persists session by default
+// src/lib/supabaseBrowser.ts
 import { createClient } from "@supabase/supabase-js";
 
 export const supabaseBrowser = () =>
