@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 export async function supabaseServerRSC() {
-  const cookieStore = await cookies(); // Next 15: cookies() is async
+  const cookieStore = await cookies(); // your runtime returns a Promise
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,7 +13,7 @@ export async function supabaseServerRSC() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        // RSC can't mutate cookies; no-ops keep the API happy
+        // RSC cannot mutate cookies. No-ops keep the API happy.
         set() {},
         remove() {},
       },
