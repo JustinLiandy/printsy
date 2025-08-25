@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -8,7 +9,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { useState } from "react";
 
 const schema = z.object({
@@ -38,11 +38,11 @@ export default function SignUpPage() {
 
     const user = data.user;
     if (user?.id) {
-      // safe if row already exists
+      // create or update profiles row for this user (requires insert policy)
       const { error: _profileError } = await supabase
         .from("profiles")
         .upsert({ id: user.id, email: user.email }, { onConflict: "id" });
-      // ignore _profileError for MVP
+      // ignore error for MVP
     }
 
     setAlert({ type: "success", text: "Account created. Check your email to verify, then sign in." });
@@ -53,7 +53,7 @@ export default function SignUpPage() {
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Start selling in minutes.</CardDescription>
+          <CardDescription>Start selling in minutes. No excuses, just buttons.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>

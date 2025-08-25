@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -10,7 +11,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -38,6 +38,7 @@ export default function SignInPage() {
       router.replace("/");
       return;
     }
+    // magic link
     const { error } = await supabase.auth.signInWithOtp({
       email: values.email,
       options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
@@ -51,7 +52,7 @@ export default function SignInPage() {
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl">Sign in</CardTitle>
-          <CardDescription>Welcome back. Choose password or magic link.</CardDescription>
+          <CardDescription>Use password or magic link. We’re flexible, like your schedule.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex gap-2 text-xs">

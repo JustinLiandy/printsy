@@ -51,7 +51,7 @@ export default function ResetPasswordPage() {
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl">Set a new password</CardTitle>
-          <CardDescription>Secure your account with a fresh password.</CardDescription>
+          <CardDescription>Give your account a fresh lock. Preferably one you’ll remember.</CardDescription>
         </CardHeader>
         <CardContent>
           {!ready ? (

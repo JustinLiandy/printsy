@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +10,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 const schema = z.object({ email: z.string().email("Enter a valid email") });
 type Values = z.infer<typeof schema>;
@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl">Forgot password</CardTitle>
-          <CardDescription>We’ll email you a secure reset link.</CardDescription>
+          <CardDescription>We’ll email you a reset link faster than your coffee gets cold.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
