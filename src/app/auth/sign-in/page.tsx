@@ -147,7 +147,7 @@ export default function SignInPage() {
             <Label htmlFor="magic-email">Email</Label>
             <Input id="magic-email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
-          <Button type="submit" disabled={busy} variant="outline">
+          <Button type="submit" variant="outline" disabled={busy}>
             {busy ? "Sending…" : "Send magic link"}
           </Button>
         </form>
