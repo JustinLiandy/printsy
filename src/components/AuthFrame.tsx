@@ -1,36 +1,32 @@
 "use client";
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export default function AuthFrame({
+export function AuthFrame({
   title,
-  description,
-  footer,
+  subtitle,
   children,
   className,
 }: {
   title: string;
-  description?: string;
-  footer?: React.ReactNode;
-  children: React.ReactNode;
+  subtitle?: string;
+  children: ReactNode;
   className?: string;
 }) {
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md items-center p-6">
-      <Card className={cn("w-full shadow-card border-slate-200 bg-white", className)}>
-        <CardHeader>
-          <CardTitle className="text-xl text-slate-900">{title}</CardTitle>
-          {description ? (
-            <CardDescription className="text-slate-600">{description}</CardDescription>
-          ) : null}
-        </CardHeader>
-        <CardContent>{children}</CardContent>
-        {footer ? <CardFooter className="justify-between">{footer}</CardFooter> : null}
-      </Card>
+    <div className="mx-auto max-w-md p-6">
+      <div
+        className={cn(
+          "rounded-2xl border border-slate-200 bg-white/90 shadow-card backdrop-blur",
+          "px-6 py-7"
+        )}
+      >
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
+        <div className="mt-5">{children}</div>
+      </div>
     </div>
   );
 }
-
-// Optional named export if you really want to import { AuthFrame }
-export { AuthFrame as NamedAuthFrame };
+export default AuthFrame;

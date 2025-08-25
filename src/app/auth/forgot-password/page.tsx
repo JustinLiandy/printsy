@@ -1,81 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { z } from "zod";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import AuthFrame from "@/components/AuthFrame";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
-const schema = z.object({ email: z.string().email() });
+const SITE = process.env.NEXT_PUBLIC_SITE_URL!;
 
 export default function ForgotPasswordPage() {
   const supabase = supabaseBrowser();
-  const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setAlert(null);
-
-    const form = new FormData(e.currentTarget);
-    const email = String(form.get("email") || "");
-    const parsed = schema.safeParse({ email });
-    if (!parsed.success) {
-      setAlert({ type: "error", text: "Enter a valid email." });
-      return;
-    }
-
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${location.origin}/auth/reset-password`,
+  async function onSend() {
+    setBusy(true); setMsg(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${SITE}/auth/reset-password`
     });
-    setLoading(false);
-
-    if (error) setAlert({ type: "error", text: error.message });
-    else setAlert({ type: "success", text: "Reset link sent. Check your email." });
+    if (error) setMsg({ type: "error", text: error.message });
+    else setMsg({ type: "success", text: "Reset email sent. Check your inbox." });
+    setBusy(false);
   }
 
   return (
-    <AuthFrame
-      title="Forgot password"
-      description="We’ll send a secure link to reset it."
-      footer={
-        <span className="text-sm text-slate-600">
-          Remember it?{" "}
-          <Link href="/auth/sign-in" className="text-brand-600 hover:underline">
-            Back to sign in
-          </Link>
-        </span>
-      }
-    >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        {alert && (
-          <div
-            role="alert"
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              alert.type === "error"
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {alert.text}
+    <AuthFrame title="Forgot password" subtitle="We’ll email you a secure reset link.">
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        {msg && (
+          <div className={`rounded-md px-3 py-2 text-sm ${msg.type === "error" ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+            {msg.text}
           </div>
         )}
-
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
-        </div>
-
-        <div className="pt-2">
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Sending..." : "Send reset link"}
-          </Button>
-        </div>
-      </form>
+        <Button className="w-full" disabled={busy} onClick={onSend}>
+          {busy ? "Sending..." : "Send reset link"}
+        </Button>
+      </div>
     </AuthFrame>
   );
 }
