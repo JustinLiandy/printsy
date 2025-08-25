@@ -1,117 +1,80 @@
 /* Tailwind v4 */
 @import "tailwindcss";
 
-/* Optional: if you actually use it */
-@import "tw-animate-css";
-
 /* ──────────────────────────────────────────────────────────
-   Theme tokens (light)
-   Keep this small. Let components style themselves.
+   Printsy Theme: light, readable, blue but not blinding
    ────────────────────────────────────────────────────────── */
-:root {
-  --font-jakarta: "Plus Jakarta Sans";
-  --radius: 10px;
+:root{
+  --font-jakarta:"Plus Jakarta Sans";
 
   /* Base */
-  --bg: #f7f9fc;                /* soft off‑white */
-  --fg: #0f172a;                /* slate-900 */
+  --bg:#f7f9fc;        /* page background */
+  --fg:#0f172a;        /* slate-900 text */
 
-  /* Brand (blue) */
-  --brand-300: #93c5fd;
-  --brand-500: #3b82f6;
-  --brand-600: #2563eb;
-  --brand-700: #1d4ed8;
+  /* Lighter brand blues (paired with your Tailwind brand scale) */
+  --brand-300:#a9cdff;
+  --brand-400:#7fb5ff;
+  --brand-500:#5aa3ff; /* default button bg */
+  --brand-600:#388bff;
 
   /* Neutrals */
-  --border: #e5e7eb;            /* slate-200 */
-  --muted: #64748b;             /* slate-500 */
+  --border:#e5e7eb;    /* slate-200 */
+  --muted:#64748b;     /* slate-500 */
 }
 
-/* Dark theme tokens (optional; only if you toggle .dark on <html>) */
-.dark {
-  --bg: #0b1220;
-  --fg: #e5e7eb;
-  --border: #1f2937;
-  --muted: #9ca3af;
-  --brand-300: #60a5fa;
-  --brand-500: #3b82f6;
-  --brand-600: #2563eb;
-  --brand-700: #1d4ed8;
+html,body{height:100%}
+
+body{
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--font-jakarta),system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  color-scheme: light;
 }
 
-/* ──────────────────────────────────────────────────────────
-   Base element resets
-   ────────────────────────────────────────────────────────── */
-html, body {
-  height: 100%;
-}
-
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-jakarta), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color-scheme: light dark; /* respects dark mode tokens if you use .dark */
-}
-
-/* Don’t nuke every element’s border/outline globally.
-   Let components decide; just improve focus behavior. */
-:where(a, button, [role="button"], input, select, textarea):focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-500) 35%, transparent);
-  border-radius: 12px;
+/* Respect focus without turning the UI into a neon sign */
+:where(a,button,[role="button"],input,select,textarea):focus-visible{
+  outline:none;
+  box-shadow:0 0 0 3px color-mix(in oklab, var(--brand-400) 35%, transparent);
+  border-radius:12px;
 }
 
 /* Selection */
-::selection {
-  background: var(--brand-300);
-  color: var(--fg);
-}
+::selection{background:var(--brand-300);color:var(--fg)}
 
 /* Media hygiene */
-img, video, canvas {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
+img,video,canvas{display:block;max-width:100%;height:auto}
 
-/* Scrollbar (Firefox + WebKit) */
-* { scrollbar-width: thin; scrollbar-color: var(--brand-300) transparent; }
-*::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb { background: var(--brand-300); border-radius: 999px; }
-*::-webkit-scrollbar-track { background: transparent; }
+/* Scrollbar */
+*{scrollbar-width:thin;scrollbar-color:var(--brand-300) transparent}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:var(--brand-300);border-radius:999px}
+*::-webkit-scrollbar-track{background:transparent}
 
-/* Autofill (Chrome/Safari): stop weird yellow/white contrast */
+/* Autofill: keep text readable */
 input:-webkit-autofill,
-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--fg);
-  box-shadow: 0 0 0 1000px white inset;
-  transition: background-color 9999s ease-in-out 0s;
+input:-webkit-autofill:focus{
+  -webkit-text-fill-color:var(--fg);
+  box-shadow:0 0 0 1000px #fff inset;
+  transition:background-color 9999s ease-in-out 0s;
 }
+
+/* Utility helpers */
+.header-glass{
+  backdrop-filter:blur(10px);
+  background:rgba(255,255,255,.75);
+  border-bottom:1px solid rgba(226,232,240,.7);
+}
+.shadow-soft{ box-shadow:0 2px 10px rgba(0,0,0,.06) }
+.shadow-card{ box-shadow:0 8px 30px rgba(0,0,0,.06) }
 
 /* Reduced motion mercy */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+@media (prefers-reduced-motion: reduce){
+  *{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
   }
-}
-
-/* ──────────────────────────────────────────────────────────
-   Utility helpers
-   ────────────────────────────────────────────────────────── */
-
-/* Glassy header class you use on the navbar */
-.header-glass {
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.75);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
-}
-
-/* Optional: card shadow that matches your brand */
-.shadow-card {
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
 }
