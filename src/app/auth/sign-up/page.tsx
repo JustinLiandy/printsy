@@ -1,87 +1,72 @@
 "use client";
 
 import { useState } from "react";
+import { z } from "zod";
 import Link from "next/link";
 import AuthFrame from "@/components/AuthFrame";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL!;
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6, "Min 6 characters"),
+});
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const supabase = supabaseBrowser();
-  const [mode, setMode] = useState<"password" | "magic">("password");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [pending, setPending] = useState(false);
+  const [alert, setAlert] = useState<{type:"error"|"success";text:string}|null>(null);
 
-  async function doPassword() {
-    setBusy(true); setMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setMsg({ type: "error", text: error.message });
-    else setMsg({ type: "success", text: "Signed in. Redirecting..." });
-    setBusy(false);
-  }
-
-  async function doMagic() {
-    setBusy(true); setMsg(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${SITE}/auth/callback` }
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAlert(null);
+    const f = new FormData(e.currentTarget);
+    const values = schema.parse({
+      email: String(f.get("email")||""),
+      password: String(f.get("password")||""),
     });
-    if (error) setMsg({ type: "error", text: error.message });
-    else setMsg({ type: "success", text: "Magic link sent. Check your email." });
-    setBusy(false);
+
+    try {
+      setPending(true);
+      const { error } = await supabase.auth.signUp({
+        email: values.email,
+        password: values.password,
+        options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` },
+      });
+      if (error) throw error;
+      setAlert({ type:"success", text:"Check your email to verify, then sign in." });
+    } catch (err:any) {
+      setAlert({ type:"error", text: err.message ?? "Sign up failed" });
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
-    <AuthFrame
-      title="Sign in"
-      subtitle="Use password or magic link. We’re flexible, like your schedule."
-    >
-      <div className="mb-4 flex gap-2">
-        <Button type="button" variant={mode === "password" ? "default" : "outline"} onClick={() => setMode("password")}>
-          Password
-        </Button>
-        <Button type="button" variant={mode === "magic" ? "default" : "outline"} onClick={() => setMode("magic")}>
-          Magic link
-        </Button>
-      </div>
-
-      <div className="space-y-4">
+    <AuthFrame title="Create account">
+      {alert && (
+        <div className={alert.type==="error" ? "mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" : "mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700"}>
+          {alert.text}
+        </div>
+      )}
+      <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+          <Input id="email" name="email" type="email" placeholder="you@example.com" required />
         </div>
-
-        {mode === "password" && (
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-            <div className="mt-2 text-sm">
-              <Link className="text-brand-600 hover:underline" href="/auth/forgot-password">Forgot password?</Link>
-            </div>
-          </div>
-        )}
-
-        {msg && (
-          <div className={`rounded-md px-3 py-2 text-sm ${msg.type === "error" ? "bg-rose-50 text-rose-700 border border-rose-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
-            {msg.text}
-          </div>
-        )}
-
-        <Button className="w-full" disabled={busy} onClick={mode === "password" ? doPassword : doMagic}>
-          {busy ? "Working..." : mode === "password" ? "Sign in" : "Send magic link"}
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" name="password" type="password" required />
+        </div>
+        <Button type="submit" disabled={pending} className="w-full">
+          {pending ? "Creating…" : "Create account"}
         </Button>
-
-        <p className="text-sm text-slate-600">
-          Don’t have an account?{" "}
-          <Link className="text-brand-600 hover:underline" href="/auth/sign-up">Sign up</Link>
+        <p className="mt-2 text-center text-sm text-slate-600">
+          Already have an account? <Link className="text-brand-600 hover:underline" href="/auth/sign-in">Sign in</Link>
         </p>
-      </div>
+      </form>
     </AuthFrame>
   );
 }

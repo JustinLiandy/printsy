@@ -1,7 +1,8 @@
-// src/lib/supabaseBrowser.ts
-import { createBrowserClient } from "@supabase/ssr";
+// tiny, stable browser client – persists session by default
+import { createClient } from "@supabase/supabase-js";
+
 export const supabaseBrowser = () =>
-  createBrowserClient(
+  createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );

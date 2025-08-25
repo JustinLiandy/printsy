@@ -1,9 +1,8 @@
 "use client";
-
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function AuthFrame({
+export default function AuthFrame({
   title,
   subtitle,
   children,
@@ -15,18 +14,16 @@ export function AuthFrame({
   className?: string;
 }) {
   return (
-    <div className="mx-auto max-w-md p-6">
-      <div
-        className={cn(
-          "rounded-2xl border border-slate-200 bg-white/90 shadow-card backdrop-blur",
-          "px-6 py-7"
-        )}
-      >
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+    <div className="py-12">
+      <div className={cn(
+        "relative z-10 mx-auto w-full max-w-md rounded-2xl border border-slate-200",
+        "bg-white p-6 shadow-card backdrop-blur",
+        className
+      )}>
+        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-600">{subtitle}</p>}
-        <div className="mt-5">{children}</div>
+        <div className="mt-6">{children}</div>
       </div>
     </div>
   );
 }
-export default AuthFrame;

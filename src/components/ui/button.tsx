@@ -1,56 +1,34 @@
+"use client";
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
-  [
-    "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-semibold transition",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300",
-    // Accessible disabled styles (still readable!)
-    "disabled:pointer-events-none",
-    "disabled:opacity-100",                       // do NOT fade everything
-    "disabled:bg-slate-200 disabled:text-slate-600 disabled:border-slate-200",
-  ].join(" "),
-  {
-    variants: {
-      variant: {
-        // lighter primary
-        default: "bg-brand-500 text-white hover:bg-brand-600 shadow-soft",
-        outline:
-          "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50",
-        ghost: "text-slate-700 hover:bg-slate-100",
-        destructive: "bg-red-600 text-white hover:bg-red-700",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 px-3",
-        lg: "h-11 px-5",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: { variant: "default", size: "default" },
-  }
-);
+const variants = {
+  default: "bg-brand-600 text-white hover:bg-brand-700",
+  outline: "border border-slate-300 text-slate-800 hover:bg-slate-50",
+  ghost:  "text-slate-700 hover:bg-slate-50",
+  destructive: "bg-red-600 text-white hover:bg-red-700",
+} as const;
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+export function Button({
+  asChild,
+  variant = "default",
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   asChild?: boolean;
+  variant?: keyof typeof variants;
+}) {
+  const Comp = asChild ? Slot : "button";
+  return (
+    <Comp
+      className={cn(
+        "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium",
+        "outline-none ring-brand-300 transition focus-visible:ring-2 disabled:opacity-50 disabled:pointer-events-none",
+        variants[variant],
+        className
+      )}
+      {...props}
+    />
+  );
 }
-
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return (
-      <Comp
-        ref={ref}
-        className={cn(buttonVariants({ variant, size }), className)}
-        {...props}
-      />
-    );
-  }
-);
-Button.displayName = "Button";
-
-export { Button, buttonVariants };
