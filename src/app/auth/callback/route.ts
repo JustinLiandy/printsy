@@ -1,3 +1,4 @@
+// src/app/auth/callback/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
@@ -7,7 +8,6 @@ export async function GET(request: NextRequest) {
   const next = url.searchParams.get("next") ?? "/";
 
   const res = NextResponse.redirect(new URL(next, url.origin));
-  if (!code) return res;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return request.cookies.getAll().map(({ name, value }) => ({ name, value }));
         },
         setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
@@ -26,11 +26,13 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    return NextResponse.redirect(
-      new URL(`/auth/sign-in?error=${encodeURIComponent(error.message)}`, url.origin)
-    );
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      return NextResponse.redirect(
+        new URL(`/auth/sign-in?error=${encodeURIComponent(error.message)}`, url.origin)
+      );
+    }
   }
 
   return res;
