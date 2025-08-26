@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/";
 
-  // Prepare redirect response first so we can attach outgoing cookies to it
+  // Prepare redirect response (we'll attach cookies to this)
   const res = NextResponse.redirect(new URL(next, url.origin));
 
   const supabase = createServerClient(
@@ -15,19 +15,15 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        // Read cookies from the incoming request
+        // read all cookies from request
         getAll() {
-          // NextRequest.cookies.getAll() -> { name, value }[]
-          return request.cookies.getAll().map(({ name, value }) => ({
-            name,
-            value,
-          }));
+          return request.cookies.getAll().map(({ name, value }) => ({ name, value }));
         },
-        // Write cookies onto the response
+        // write all cookies onto the response
         setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
+          for (const { name, value, options } of cookiesToSet) {
             res.cookies.set(name, value, options);
-          });
+          }
         },
       },
     }
@@ -36,7 +32,19 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      return NextResponse.redirect(new URL("/auth/sign-in?error=callback", url));
+      const errURL = new URL(`/auth/sign-in?error=${encodeURIComponent(error.message)}`, url.origin);
+      return NextResponse.redirect(errURL);
+    }
+
+    // Ensure a profile row exists (id/email only; rest you can fill later)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      await supabase
+        .from("profiles")
+        .upsert(
+          { id: user.id, email: user.email ?? null },
+          { onConflict: "id" }
+        );
     }
   }
 
