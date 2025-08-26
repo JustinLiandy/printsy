@@ -25,11 +25,14 @@ type Values = z.infer<typeof schema>;
 export default function SellerOnboardingPage() {
   const [alert, setAlert] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { shop_name:"", payout_type:"", payout_name:"", payout_account:"", tax_id:"" },
   });
+
+  
 
   function onSubmit(values: Values) {
     setAlert(null);

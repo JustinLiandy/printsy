@@ -1,37 +1,25 @@
 // src/lib/supabaseBrowser.ts
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+"use client";
+
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 let browserClient: SupabaseClient | null = null;
 
-/**
- * Browser-first Supabase client.
- * - On the server (during prerender), returns a safe, no-persist client.
- * - On the browser, returns a cached client with default auth persistence.
- */
-export function supabaseBrowser(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
+export function supabaseBrowser() {
+  // If running on the server, just return a harmless dummy object
   if (typeof window === "undefined") {
-    // Server-safe fallback (no DOM, no localStorage)
-    return createClient(url, key, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        storage: {
-          /* eslint-disable @typescript-eslint/no-unused-vars */
-          getItem: (_k: string) => null,
-          setItem: (_k: string, _v: string) => {},
-          removeItem: (_k: string) => {},
-          /* eslint-enable @typescript-eslint/no-unused-vars */
-        },
-      },
-    });
+    console.warn("supabaseBrowser() called on the server – returning dummy client.");
+    return {} as SupabaseClient;
   }
 
+  // Singleton: reuse same client across renders
   if (!browserClient) {
-    browserClient = createClient(url, key);
+    browserClient = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
   }
+
   return browserClient;
 }

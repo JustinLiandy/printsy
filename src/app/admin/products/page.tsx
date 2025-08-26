@@ -1,71 +1,69 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import { supabaseServerRSC } from "@/lib/supabaseServerRSC";
-import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").toLowerCase();
+
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function AdminProducts() {
+export default async function AdminProductsPage() {
   const supabase = await supabaseServerRSC();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: isAdmin } = await supabase.rpc("is_admin");
-  if (!user || !isAdmin) redirect("/");
+  if (!user || (user.email ?? "").toLowerCase() !== ADMIN_EMAIL) {
+    redirect("/auth/sign-in");
+  }
 
   const { data: products, error } = await supabase
     .from("base_products")
-    .select("id,name,slug,active,updated_at,base_cost,description")
+    .select("id,name,slug,active,base_cost,updated_at")
     .order("updated_at", { ascending: false });
 
   if (error) throw new Error(error.message);
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold leading-tight">Base products</h1>
-          <p className="text-sm text-slate-500">These are the blanks sellers can design on.</p>
-        </div>
-        <Link href="/admin/products/new">
-          <Button className="shadow-xs">Create product</Button>
+    <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">Base Products</h1>
+        <Link href="/admin/products/new" className="rounded-lg border border-slate-200 px-4 py-2 text-sm hover:border-brand-300">
+          New product
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-soft">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr className="text-left text-sm text-slate-600">
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Slug</th>
-              <th className="px-4 py-3 font-medium">Cost</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
-            {products?.map(p => (
-              <tr key={p.id} className="text-sm">
-                <td className="px-4 py-3">
-                  <div className="font-medium">{p.name}</div>
-                  {p.description && <div className="text-xs text-slate-500 line-clamp-1">{p.description}</div>}
-                </td>
-                <td className="px-4 py-3 text-slate-500">{p.slug}</td>
-                <td className="px-4 py-3">Rp {Number(p.base_cost).toLocaleString("id-ID")}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-1 text-xs ${p.active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                    {p.active ? "Active" : "Archived"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Link href={`/admin/products/${p.id}/edit`} className="text-brand-700 hover:underline">Edit</Link>
-                </td>
+      {(!products || products.length === 0) ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">
+          Nothing here yet. <Link className="text-brand-600 underline" href="/admin/products/new">Create one</Link>.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Slug</th>
+                <th className="px-4 py-3">Base cost</th>
+                <th className="px-4 py-3">Active</th>
+                <th className="px-4 py-3"></th>
               </tr>
-            ))}
-            {!products?.length && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-slate-500">No base products yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id} className="border-t">
+                  <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
+                  <td className="px-4 py-3 text-slate-600">{p.slug}</td>
+                  <td className="px-4 py-3 text-slate-600">Rp {Number(p.base_cost ?? 0).toLocaleString()}</td>
+                  <td className="px-4 py-3">{p.active ? "Yes" : "No"}</td>
+                  <td className="px-4 py-3">
+                    <Link className="text-brand-600 hover:underline" href={`/admin/products/${p.id}/edit`}>
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

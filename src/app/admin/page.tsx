@@ -1,20 +1,22 @@
-// src/app/admin/page.tsx
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase();
 
 export default function AdminPage() {
   const supabase = supabaseBrowser();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
       const email = data.user?.email?.toLowerCase();
-      setAllowed(email === ADMIN_EMAIL?.toLowerCase());
+      setAllowed(!!email && email === ADMIN_EMAIL);
     });
+    return () => { mounted = false; };
   }, [supabase]);
 
   if (allowed === null) return <div className="p-6">Checking access…</div>;

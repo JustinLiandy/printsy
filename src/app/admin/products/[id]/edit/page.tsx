@@ -1,37 +1,32 @@
-import { redirect, notFound } from "next/navigation";
 import { supabaseServerRSC } from "@/lib/supabaseServerRSC";
+import { notFound, redirect } from "next/navigation";
 import { ProductForm } from "@/products/product-form";
-// If alias keeps failing, comment the line above and use the relative import below instead:
-// import { ProductForm } from "../../product-form";
 import ProductAssets from "@/products/product-assets";
-// If alias keeps failing, comment the line above and use the relative import below instead:
-// import ProductAssets from "../../product-assets";
+
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").toLowerCase();
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function Page({ params }: { params: { id: string } }) {
+export default async function EditProductPage({ params }: { params: { id: string } }) {
   const supabase = await supabaseServerRSC();
-
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/sign-in?next=/admin/products");
+  if (!user || (user.email ?? "").toLowerCase() !== ADMIN_EMAIL) {
+    redirect("/auth/sign-in");
+  }
 
-  const { data: isAdmin } = await supabase.rpc("is_admin");
-  if (!isAdmin) redirect("/");
-
-  const { data: product, error } = await supabase
+  const { data: p } = await supabase
     .from("base_products")
-    .select("id,name,description,base_cost,slug,active")
+    .select("id,name,description,slug,base_cost,active")
     .eq("id", params.id)
     .single();
 
-  if (error || !product) notFound();
+  if (!p) notFound();
 
   return (
-    <div className="mx-auto max-w-5xl p-6 space-y-8">
-      <h1 className="text-2xl font-semibold">Edit product</h1>
-      <ProductForm mode="edit" initial={product} />
-      <ProductAssets productId={product.id} />
-    </div>
+    <>
+      <ProductForm mode="edit" initial={p} />
+      <ProductAssets productId={p.id} />
+    </>
   );
 }

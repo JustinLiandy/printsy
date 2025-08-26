@@ -1,4 +1,3 @@
-// src/products/product-assets.tsx
 "use client";
 
 import * as React from "react";
@@ -20,8 +19,6 @@ type BaseProductAsset = {
 };
 
 type Props = { productId: string };
-
-const BUCKET = "base-assets"; // must exist in Supabase Storage
 
 export default function ProductAssets({ productId }: Props) {
   const supabase = supabaseBrowser();
@@ -50,17 +47,15 @@ export default function ProductAssets({ productId }: Props) {
   async function getImageSize(file: File): Promise<{ w: number; h: number }> {
     const url = URL.createObjectURL(file);
     try {
-      // Fast path in modern browsers
       const bmp = await createImageBitmap(file);
       return { w: bmp.width, h: bmp.height };
     } catch {
-      // Fallback via DOM <img> (do NOT import next/image here)
       const img = document.createElement("img");
       const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
         img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
         img.onerror = () => reject(new Error("Failed to read image"));
-        img.src = url;
       });
+      img.src = url;
       return dims;
     } finally {
       URL.revokeObjectURL(url);
@@ -76,10 +71,11 @@ export default function ProductAssets({ productId }: Props) {
 
       setBusyKind(kind);
 
+      const bucket = "base-assets";
       const safeName = file.name.toLowerCase().replace(/\s+/g, "-");
       const path = `base-products/${productId}/${kind}-${Date.now()}-${safeName}`;
 
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
+      const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, {
         cacheControl: "3600",
         upsert: false,
       });
@@ -89,7 +85,7 @@ export default function ProductAssets({ productId }: Props) {
         return;
       }
 
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path);
       const publicUrl = pub?.publicUrl ?? "";
 
       const { w, h } = await getImageSize(file);
@@ -110,15 +106,11 @@ export default function ProductAssets({ productId }: Props) {
       }
 
       await fetchAssets();
-      // allow re-uploading same file
       e.currentTarget.value = "";
     };
 
   const handleDelete = async (rowId: string) => {
     setError(null);
-    // Optional: confirm
-    // if (!window.confirm("Delete this asset?")) return;
-
     const { error: delErr } = await supabase
       .from("base_product_assets")
       .delete()
@@ -135,11 +127,6 @@ export default function ProductAssets({ productId }: Props) {
     <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-900">Mockup & overlay assets</h3>
-        {busyKind && (
-          <span className="text-xs rounded-full bg-brand-50 px-2 py-1 text-brand-700">
-            Uploading {busyKind}…
-          </span>
-        )}
       </div>
 
       {error && (
@@ -149,33 +136,29 @@ export default function ProductAssets({ productId }: Props) {
       )}
 
       <div className="grid gap-6 md:grid-cols-3">
-        {(["preview", "overlay", "mask"] as const).map((kind) => (
+        {(["preview", "overlay", "mask"] as AssetKind[]).map((kind) => (
           <div key={kind} className="rounded-lg border border-slate-200 p-4">
             <Label className="mb-2 block capitalize text-slate-700">{kind}</Label>
             <Input
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/*"
               onChange={handleUpload(kind)}
               disabled={busyKind !== null}
             />
             <p className="mt-2 text-xs text-slate-500">
-              PNG recommended. Large images are fine; we store width/height for you.
+              PNG recommended. Large images are fine; we store width/height.
             </p>
-
             <div className="mt-4 space-y-3">
               {assets
                 .filter((a) => a.kind === kind)
                 .map((a) => (
                   <div key={a.id} className="flex items-center gap-3">
-                    <div className="relative h-16 w-16 overflow-hidden rounded-md border">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={a.url}
-                        alt={`${kind} asset`}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={a.url}
+                      alt={`${kind} asset`}
+                      className="h-16 w-16 rounded-md border object-cover"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm text-slate-700">{a.url}</div>
                       <div className="text-xs text-slate-500">
@@ -187,12 +170,6 @@ export default function ProductAssets({ productId }: Props) {
                     </Button>
                   </div>
                 ))}
-              {/* Empty state */}
-              {assets.filter((a) => a.kind === kind).length === 0 && (
-                <div className="rounded-md border border-dashed border-slate-200 p-3 text-xs text-slate-500">
-                  No {kind} assets yet. Upload one above.
-                </div>
-              )}
             </div>
           </div>
         ))}

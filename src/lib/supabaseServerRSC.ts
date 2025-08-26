@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 /**
- * Server Component–safe Supabase client for Next 15.
- * Uses cookies().getAll() and a no-op setAll (RSC can’t mutate response cookies).
+ * Server Component-safe Supabase client (Next 15).
  */
 export async function supabaseServerRSC() {
   const store = await cookies();
@@ -15,11 +14,12 @@ export async function supabaseServerRSC() {
     {
       cookies: {
         getAll() {
+          // Map Next's { name, value } objects to what Supabase expects
           return store.getAll().map(({ name, value }) => ({ name, value }));
         },
         setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          // RSC cannot set outgoing cookies; touching the array keeps ESLint happy.
-          if (cookiesToSet && cookiesToSet.length > 0) {
+          // RSC cannot mutate outgoing cookies; but “touch” the arg so ESLint is happy.
+          if (cookiesToSet.length > 0) {
             // no-op
           }
         },
