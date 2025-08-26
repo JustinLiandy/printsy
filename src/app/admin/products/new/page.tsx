@@ -1,15 +1,12 @@
-import { supabaseServerRSC } from "@/lib/supabaseServerRSC";
-import { redirect } from "next/navigation";
 import { ProductForm } from "@/products/product-form";
 
-const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").toLowerCase();
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export default async function NewProductPage() {
-  const supabase = await supabaseServerRSC();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || (user.email ?? "").toLowerCase() !== ADMIN_EMAIL) {
-    redirect("/auth/sign-in");
-  }
-
-  return <ProductForm mode="create" />;
+export default function NewProductPage() {
+  return (
+    <div className="mx-auto max-w-4xl p-6">
+      <ProductForm mode="create" />
+    </div>
+  );
 }

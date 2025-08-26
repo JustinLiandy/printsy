@@ -29,7 +29,7 @@ export default function ProductAssets({ productId }: Props) {
   const fetchAssets = React.useCallback(async () => {
     const { data, error: err } = await supabase
       .from("base_product_assets")
-      .select("id, base_product_id, kind, url, width, height, created_at")
+      .select("id,base_product_id,kind,url,width,height,created_at")
       .eq("base_product_id", productId)
       .order("created_at", { ascending: false });
 
@@ -124,9 +124,10 @@ export default function ProductAssets({ productId }: Props) {
   };
 
   return (
-    <section className="mt-10 rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900">Mockup & overlay assets</h3>
+    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-soft">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-slate-900">Mockup / Overlay / Mask assets</h3>
+        <p className="text-sm text-slate-600">Upload PNGs. We’ll store width/height for quick mockup placement.</p>
       </div>
 
       {error && (
@@ -145,31 +146,24 @@ export default function ProductAssets({ productId }: Props) {
               onChange={handleUpload(kind)}
               disabled={busyKind !== null}
             />
-            <p className="mt-2 text-xs text-slate-500">
-              PNG recommended. Large images are fine; we store width/height.
-            </p>
+            <p className="mt-2 text-xs text-slate-500">PNG recommended. Transparent background for overlay/mask.</p>
+
             <div className="mt-4 space-y-3">
-              {assets
-                .filter((a) => a.kind === kind)
-                .map((a) => (
-                  <div key={a.id} className="flex items-center gap-3">
+              {assets.filter(a => a.kind === kind).map((a) => (
+                <div key={a.id} className="flex items-center gap-3">
+                  <div className="relative h-16 w-16 overflow-hidden rounded-md border">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={a.url}
-                      alt={`${kind} asset`}
-                      className="h-16 w-16 rounded-md border object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm text-slate-700">{a.url}</div>
-                      <div className="text-xs text-slate-500">
-                        {a.width ?? "?"}×{a.height ?? "?"}
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => void handleDelete(a.id)}>
-                      Delete
-                    </Button>
+                    <img src={a.url} alt={`${kind} asset`} className="h-full w-full object-cover" />
                   </div>
-                ))}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm text-slate-700">{a.url}</div>
+                    <div className="text-xs text-slate-500">{a.width ?? "?"}×{a.height ?? "?"}</div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => void handleDelete(a.id)}>
+                    Delete
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
         ))}

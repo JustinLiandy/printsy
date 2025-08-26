@@ -1,49 +1,103 @@
-// src/app/admin/products/actions.ts
-"use server";
+'use server';
 
-import { redirect } from "next/navigation";
-import { supabaseServerRSC } from "@/lib/supabaseServerRSC";
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { supabaseServerRSC } from '@/lib/supabaseServerRSC';
+import type { PostgrestError } from '@supabase/supabase-js';
 
-export async function saveBaseProduct(formData: FormData) {
+function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}
+
+export async function createProduct(formData: FormData): Promise<void> {
+  const name = String(formData.get('name') ?? '').trim();
+  const base_cost = Number(formData.get('base_cost') ?? 0);
+  const slugInput = String(formData.get('slug') ?? '').trim();
+  const description = String(formData.get('description') ?? '').trim() || null;
+  const active = formData.get('active') != null;
+
+  if (!name) throw new Error('Name is required');
+  if (!Number.isFinite(base_cost) || base_cost < 0) throw new Error('Base cost is invalid');
+
   const supabase = await supabaseServerRSC();
 
-  // auth + admin gate
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: isAdmin } = await supabase.rpc("is_admin");
+  // robust-ish unique slug
+  let proposed = slugInput || slugify(name);
+  if (!proposed) proposed = `product-${Math.random().toString(36).slice(2, 8)}`;
+  const withSuffix = `${proposed}-${Math.random().toString(36).slice(2, 5)}`;
 
-  if (!user || !isAdmin) {
-    throw new Error("Unauthorized");
+  const { data, error } = await supabase
+    .from('base_products')
+    .insert({
+      name,
+      base_cost,
+      slug: withSuffix,
+      description,
+      active,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin/products');
+  redirect(`/admin/products/${data!.id}/edit`);
+}
+
+export async function updateProduct(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '').trim();
+  const name = String(formData.get('name') ?? '').trim();
+  const base_cost = Number(formData.get('base_cost') ?? 0);
+  const slugInput = String(formData.get('slug') ?? '').trim();
+  const description = String(formData.get('description') ?? '').trim() || null;
+  const active = formData.get('active') != null;
+
+  if (!id) throw new Error('Missing id');
+  if (!name) throw new Error('Name is required');
+  if (!Number.isFinite(base_cost) || base_cost < 0) throw new Error('Base cost is invalid');
+
+  const supabase = await supabaseServerRSC();
+
+  const finalSlug = slugInput ? slugify(slugInput) : slugify(name);
+
+  const { error } = await supabase
+    .from('base_products')
+    .update({
+      name,
+      base_cost,
+      slug: finalSlug || null,
+      description,
+      active,
+    })
+    .eq('id', id);
+
+  if (error) {
+    const pgErr = error as PostgrestError | null;
+    // 23505 = unique_violation (Postgres)
+    if (pgErr?.code === '23505') {
+      throw new Error('Slug already in use. Choose another one.');
+    }
+    throw new Error(error.message);
   }
 
-  const id = (formData.get("id") as string | null) || undefined;
-  const name = String(formData.get("name") ?? "").trim();
-  const slug = String(formData.get("slug") ?? "").trim();
-  const base_cost = Number(formData.get("base_cost") ?? 0);
-  const description = (formData.get("description") as string | null) || null;
-  const activeRaw = formData.get("active");
-  const active =
-    activeRaw === "on" || activeRaw === "true" || activeRaw === "1" ? true : false;
+  revalidatePath('/admin/products');
+  revalidatePath(`/admin/products/${id}/edit`);
+}
 
-  if (!name || !slug || Number.isNaN(base_cost)) {
-    throw new Error("Invalid form values");
-  }
+export async function deleteProduct(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '').trim();
+  if (!id) throw new Error('Missing id');
 
-  if (id) {
-    const { error } = await supabase
-      .from("base_products")
-      .update({ name, slug, base_cost, description, active })
-      .eq("id", id);
-    if (error) throw error;
-    redirect(`/admin/products/${id}/edit`);
-  } else {
-    const { data, error } = await supabase
-      .from("base_products")
-      .insert({ name, slug, base_cost, description, active })
-      .select("id")
-      .single();
-    if (error) throw error;
-    redirect(`/admin/products/${data.id}/edit`);
-  }
+  const supabase = await supabaseServerRSC();
+
+  const { error } = await supabase.from('base_products').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/admin/products');
+  redirect('/admin/products');
 }
