@@ -1,80 +1,40 @@
-// src/components/Navbar.tsx
-'use client';
+// src/components/NavbarClient.tsx
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
-import { Button } from '@/components/ui/button';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase();
-
-type ProfileMini = {
-  is_seller: boolean | null;
-  shop_slug: string | null;
+type Props = {
+  isAuthed: boolean;
+  userEmail: string | null;
+  isSeller: boolean;
+  shopSlug: string | null;
+  isAdmin: boolean;
 };
 
-export default function Navbar() {
-  const supabase = supabaseBrowser();
+export default function NavbarClient({
+  isAuthed,
+  userEmail,
+  isSeller,
+  shopSlug,
+  isAdmin,
+}: Props) {
   const pathname = usePathname();
-
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<ProfileMini | null>(null);
   const [open, setOpen] = useState(false);
 
-  // load user + keep in sync
-  useEffect(() => {
-    let active = true;
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!active) return;
-      setUser(data.user ?? null);
-    })();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) setProfile(null);
-    });
-
-    return () => {
-      active = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  // fetch minimal profile flags
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_seller,shop_slug')
-        .eq('id', user.id)
-        .single();
-
-      if (!cancelled) setProfile(data ?? { is_seller: false, shop_slug: null });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, user?.id]);
-
-  const isAdmin = useMemo(
-    () => !!user?.email && user.email.toLowerCase() === ADMIN_EMAIL,
-    [user?.email]
-  );
-
-  const doLogout = async () => {
+  async function doLogout() {
     await supabase.auth.signOut();
-    setOpen(false);
-    // hard refresh to clear any client state
-    window.location.assign('/');
-  };
+    // nuke any client cache and land on home
+    window.location.assign("/");
+  }
+
+  const linkCls = (active?: boolean) =>
+    ["transition", active ? "text-brand-600" : "text-slate-700 hover:text-brand-600"].join(" ");
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
@@ -83,7 +43,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3 md:gap-8">
           <button
             className="md:hidden rounded-lg border border-slate-200 p-2"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen(v => !v)}
             aria-label="Toggle menu"
           >
             ☰
@@ -93,37 +53,21 @@ export default function Navbar() {
             <span className="text-brand-600">Printsy</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-700">
-            <Link
-              href="/"
-              className={linkCls(pathname === '/')}
-            >
-              Home
-            </Link>
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link href="/" className={linkCls(pathname === "/")}>Home</Link>
 
-            {/* Seller entry point (depends on profile) */}
-            {profile?.is_seller ? (
-              <Link
-                href="/seller"
-                className={linkCls(pathname?.startsWith('/seller'))}
-              >
+            {isSeller ? (
+              <Link href="/seller" className={linkCls(pathname?.startsWith("/seller"))}>
                 Seller
               </Link>
             ) : (
-              <Link
-                href="/seller/onboarding"
-                className={linkCls(pathname?.startsWith('/seller'))}
-              >
-                Become a Seller
+              <Link href="/seller/onboarding" className={linkCls(pathname?.startsWith("/seller"))}>
+                Become a seller
               </Link>
             )}
 
-            {/* Admin gate */}
             {isAdmin && (
-              <Link
-                href="/admin"
-                className={linkCls(pathname?.startsWith('/admin'))}
-              >
+              <Link href="/admin" className={linkCls(pathname?.startsWith("/admin"))}>
                 Admin
               </Link>
             )}
@@ -135,10 +79,10 @@ export default function Navbar() {
           <input
             placeholder="Search designs..."
             className="w-64 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-brand-300 focus:ring-2"
-            defaultValue=""
+            aria-label="Search"
           />
 
-          {!user ? (
+          {!isAuthed ? (
             <>
               <Link href="/auth/sign-in">
                 <Button variant="outline">Sign in</Button>
@@ -150,14 +94,12 @@ export default function Navbar() {
           ) : (
             <>
               <span className="hidden lg:inline text-sm text-slate-700">
-                Hi, {user.email}
+                Hi, {userEmail}
               </span>
               <Link href="/profile">
                 <Button variant="outline">Profile</Button>
               </Link>
-              <Button onClick={doLogout} variant="destructive">
-                Logout
-              </Button>
+              <Button onClick={doLogout} variant="destructive">Logout</Button>
             </>
           )}
         </div>
@@ -171,6 +113,7 @@ export default function Navbar() {
               <input
                 placeholder="Search designs..."
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-brand-300 focus:ring-2"
+                aria-label="Search"
               />
             </div>
 
@@ -179,13 +122,13 @@ export default function Navbar() {
                 Home
               </Link>
 
-              {profile?.is_seller ? (
+              {isSeller ? (
                 <Link href="/seller" className="rounded-lg px-2 py-2 hover:bg-slate-50" onClick={() => setOpen(false)}>
                   Seller
                 </Link>
               ) : (
                 <Link href="/seller/onboarding" className="rounded-lg px-2 py-2 hover:bg-slate-50" onClick={() => setOpen(false)}>
-                  Become a Seller
+                  Become a seller
                 </Link>
               )}
 
@@ -196,7 +139,7 @@ export default function Navbar() {
               )}
 
               <div className="mt-2 flex flex-col gap-2">
-                {!user ? (
+                {!isAuthed ? (
                   <>
                     <Link href="/auth/sign-in" onClick={() => setOpen(false)}>
                       <Button className="w-full" variant="outline">Sign in</Button>
@@ -222,11 +165,4 @@ export default function Navbar() {
       )}
     </header>
   );
-}
-
-function linkCls(active?: boolean) {
-  return [
-    'transition',
-    active ? 'text-brand-600' : 'text-slate-700 hover:text-brand-600',
-  ].join(' ');
 }
